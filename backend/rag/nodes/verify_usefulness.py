@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 from rag.graph.state import GraphState
-from rag.nodes.base import get_small_llm, now_iso
+from rag.nodes.base import get_answering_llm, now_iso
 
 NODE_ID    = "verify_usefulness"
 NODE_LABEL = "Useful?"
@@ -36,7 +36,7 @@ def verify_usefulness(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
-    llm = get_small_llm()
+    llm = get_answering_llm()
     structured_llm = llm.with_structured_output(IsUSEDecision)
 
     messages = prompt.format_messages(

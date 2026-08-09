@@ -20,49 +20,49 @@ export const INITIAL_NODES: Node[] = [
   {
     id: "generate_direct",
     type: "customNode",
-    position: { x: 80, y: 180 },
+    position: { x: 80, y: 230 },
     data: { label: "Generate Direct Answer", nodeId: "generate_direct", status: "waiting" },
   },
   {
     id: "retrieve",
     type: "customNode",
-    position: { x: 620, y: 180 },
+    position: { x: 620, y: 230 },
     data: { label: "Retrieve Documents", nodeId: "retrieve", status: "waiting" },
   },
   {
     id: "grade_documents",
     type: "customNode",
-    position: { x: 620, y: 310 },
+    position: { x: 620, y: 410 },
     data: { label: "Grade Documents", nodeId: "grade_documents", status: "waiting" },
   },
   {
     id: "no_answer",
     type: "customNode",
-    position: { x: 350, y: 440 },
+    position: { x: 350, y: 590 },
     data: { label: "No Answer Found", nodeId: "no_answer", status: "waiting" },
   },
   {
     id: "generate_from_context",
     type: "customNode",
-    position: { x: 620, y: 440 },
+    position: { x: 620, y: 590 },
     data: { label: "Generate Answer", nodeId: "generate_from_context", status: "waiting" },
   },
   {
     id: "verify_groundedness",
     type: "customNode",
-    position: { x: 620, y: 580 },
+    position: { x: 620, y: 770 },
     data: { label: "Grounded?", nodeId: "verify_groundedness", status: "waiting" },
   },
   {
     id: "revise_answer",
     type: "customNode",
-    position: { x: 950, y: 580 },
+    position: { x: 1060, y: 770 },
     data: { label: "Revise Answer", nodeId: "revise_answer", status: "waiting" },
   },
   {
     id: "verify_usefulness",
     type: "customNode",
-    position: { x: 620, y: 720 },
+    position: { x: 620, y: 950 },
     data: { label: "Useful?", nodeId: "verify_usefulness", status: "waiting" },
   },
 ];
@@ -74,9 +74,20 @@ const arrow = (color: string) => ({
   height: 16,
 });
 
-const labelStyle = (color: string) => ({
-  labelStyle: { fill: color, fontWeight: 600, fontSize: 11, fontFamily: "monospace" },
-  labelBgStyle: { fill: "#121518", fillOpacity: 0.95, stroke: "#1e242b" },
+const labelStyle = (color: string, offsetY?: number) => ({
+  labelStyle: {
+    fill: color,
+    fontWeight: 600,
+    fontSize: 11,
+    fontFamily: "monospace",
+    transform: offsetY ? `translateY(${offsetY}px)` : undefined,
+  },
+  labelBgStyle: {
+    fill: "#121518",
+    fillOpacity: 0.95,
+    stroke: "#1e242b",
+    transform: offsetY ? `translateY(${offsetY}px)` : undefined,
+  },
   labelBgPadding: [6, 4] as [number, number],
   labelBgBorderRadius: 6,
 });
@@ -168,7 +179,7 @@ export const INITIAL_EDGES: Edge[] = [
     label: "Not supported",
     markerEnd: arrow("#f43f5e"),
     style: { stroke: "#f43f5e", strokeWidth: 1.5 },
-    ...labelStyle("#f43f5e"),
+    ...labelStyle("#f43f5e", -8),
   },
   {
     // horizontal, lower lane (top: 65%) — offset from the edge above so it doesn't overlap
@@ -182,7 +193,7 @@ export const INITIAL_EDGES: Edge[] = [
     label: "Retry",
     markerEnd: arrow("#f59e0b"),
     style: { stroke: "#f59e0b", strokeWidth: 1.5 },
-    ...labelStyle("#f59e0b"),
+    ...labelStyle("#f59e0b", 8),
   },
   {
     id: "e-grounded-useful",
@@ -198,8 +209,6 @@ export const INITIAL_EDGES: Edge[] = [
     ...labelStyle("#00e599"),
   },
   {
-    // routed via left/bottom handles + smoothstep so it right-angles around
-    // the Grounded?/Revise Answer column instead of cutting through it
     id: "e-useful-noanswer",
     source: "verify_usefulness",
     target: "no_answer",

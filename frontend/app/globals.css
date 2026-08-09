@@ -1,10 +1,14 @@
 @import "tailwindcss";
 
+@theme {
+  --font-manrope: var(--font-manrope), system-ui, sans-serif;
+}
+
 @layer base {
   body {
     background-color: #0b0d0f;
     color: #f1f5f9;
-    font-family: inherit;
+    font-family: var(--font-manrope), system-ui, sans-serif;
   }
 }
 
@@ -236,6 +240,93 @@
   font-weight: 500;
   letter-spacing: 0.05em;
 }
+
+/* Sidebar Collapser Checkbox Button (User Toggler) */
+.checkboxtoggler {
+  width: 3em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7em;
+  cursor: pointer;
+}
+
+.checkboxtoggler .line-1,
+.checkboxtoggler .line-2,
+.checkboxtoggler .line-3 {
+  background: #00e599; /* Mint green theme matching website */
+  height: 0.3em;
+  border-radius: 10em;
+  transition-duration: 500ms;
+}
+
+.checkboxtoggler:hover .line-1,
+.checkboxtoggler:hover .line-2,
+.checkboxtoggler:hover .line-3 {
+  background: #00cc7d; /* Hover feedback */
+}
+
+#toggleChecker {
+  height: 3em;
+  width: 100%;
+  display: none;
+}
+
+#toggleChecker:checked + #togglerLable .checkboxtoggler .line-1 {
+  -webkit-transform: rotate(45deg) translateY(0.7em) translateX(0.7em);
+  -ms-transform: rotate(45deg) translateY(0.7em) translateX(0.7em);
+  transform: rotate(45deg) translateY(0.7em) translateX(0.7em);
+}
+
+#toggleChecker:checked + #togglerLable .checkboxtoggler .line-2 {
+  -webkit-transform: rotate(-45deg) translateY(0em) translateX(0.1em);
+  -ms-transform: rotate(-45deg) translateY(0em) translateX(0.1em);
+  transform: rotate(-45deg) translateY(0em) translateX(0.1em);
+}
+
+#toggleChecker:checked + #togglerLable .checkboxtoggler .line-3 {
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+/* Container Query for Right Pane Header Responsiveness */
+.right-pane-container {
+  container-type: inline-size;
+}
+
+@container (max-width: 520px) {
+  .switcher-btn-text-full {
+    display: none !important;
+  }
+  .switcher-btn-text-short {
+    display: inline !important;
+  }
+}
+
+@container (min-width: 521px) {
+  .switcher-btn-text-full {
+    display: inline !important;
+  }
+  .switcher-btn-text-short {
+    display: none !important;
+  }
+}
+
+@container (max-width: 410px) {
+  .switcher-btn-text-short {
+    display: none !important;
+  }
+  .engine-badge-text {
+    display: none !important;
+  }
+}
+
+@container (max-width: 320px) {
+  .engine-badge {
+    display: none !important;
+  }
+}
+
+
 
 
 

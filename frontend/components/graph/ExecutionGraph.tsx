@@ -13,18 +13,14 @@ import { Maximize2, Minimize2 } from "lucide-react";
 
 import { useExecutionStore } from "@/store/useExecutionStore";
 import { GraphNode } from "./GraphNode";
-import { NodeDetailPanel } from "./NodeDetailPanel";
+
+const NODE_TYPES: NodeTypes = {
+  customNode: GraphNode,
+};
 
 export const ExecutionGraph: React.FC = () => {
-  const { nodes, edges, selectNode, selectedTrace } = useExecutionStore();
+  const { nodes, edges, selectNode } = useExecutionStore();
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      customNode: GraphNode,
-    }),
-    []
-  );
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: any) => {
@@ -64,7 +60,7 @@ export const ExecutionGraph: React.FC = () => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
+        nodeTypes={NODE_TYPES}
         onNodeClick={onNodeClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
@@ -146,9 +142,6 @@ export const ExecutionGraph: React.FC = () => {
           <Maximize2 className="h-3.5 w-3.5" />
         )}
       </button>
-
-      {/* Node Detail Slide-Over */}
-      <NodeDetailPanel trace={selectedTrace} onClose={() => selectNode(null)} />
     </div>
   );
 };

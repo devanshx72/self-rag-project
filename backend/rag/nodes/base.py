@@ -22,7 +22,7 @@ def get_llm(model: str = MODEL_SMALL) -> ChatMistralAI:
             raise ValueError("MISTRAL_API_KEY environment variable is not set. Please check your .env file.")
         _llms[model] = ChatMistralAI(
             model=model,
-            temperature=0,
+            temperature=0.3,
             api_key=api_key,
         )
     return _llms[model]

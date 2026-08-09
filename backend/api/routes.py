@@ -106,7 +106,7 @@ async def _run_graph_stream(question: str, session_id: str) -> AsyncGenerator[st
 
     t_start = time.perf_counter()
     seen_trace_len = 0
-    final_state = None
+    accumulated_state = dict(initial_state)
 
     try:
         # Stream node-by-node updates
@@ -115,6 +115,7 @@ async def _run_graph_stream(question: str, session_id: str) -> AsyncGenerator[st
             for node_name, partial in chunk_state.items():
                 if not isinstance(partial, dict):
                     continue
+                accumulated_state.update(partial)
                 trace = partial.get("execution_trace", [])
                 # Emit new trace entries as SSE events
                 for entry in trace[seen_trace_len:]:
@@ -142,14 +143,8 @@ async def _run_graph_stream(question: str, session_id: str) -> AsyncGenerator[st
                     seen_trace_len += 1
                     yield f"data: {json.dumps(event)}\n\n"
 
-                final_state = partial
-
     except Exception as e:
         yield f"data: {json.dumps({'event': 'graph_error', 'message': str(e)})}\n\n"
-        return
-
-    if final_state is None:
-        yield f"data: {json.dumps({'event': 'graph_error', 'message': 'No output'})}\n\n"
         return
 
     total_latency_ms = round((time.perf_counter() - t_start) * 1000, 2)
@@ -157,7 +152,7 @@ async def _run_graph_stream(question: str, session_id: str) -> AsyncGenerator[st
     # Build final citations from relevant chunks in the last known state
     # (We pass them through the last generate node's trace)
     citations = []
-    for entry in (final_state.get("execution_trace") or []):
+    for entry in (accumulated_state.get("execution_trace") or []):
         if entry.get("citations"):
             citations = entry["citations"]
 
@@ -165,18 +160,18 @@ async def _run_graph_stream(question: str, session_id: str) -> AsyncGenerator[st
         "event":              "graph_complete",
         "session_id":         session_id,
         "question":           question,
-        "answer":             final_state.get("answer", ""),
+        "answer":             accumulated_state.get("answer", ""),
         "citations":          citations,
-        "execution_trace":    final_state.get("execution_trace", []),
+        "execution_trace":    accumulated_state.get("execution_trace", []),
         "total_latency_ms":   total_latency_ms,
-        "total_tokens":       final_state.get("total_tokens", 0),
+        "total_tokens":       accumulated_state.get("total_tokens", 0),
     }
 
     # Save to history
     save_execution(session_id, {
         **complete_event,
         "total_latency_ms":   total_latency_ms,
-        "total_tokens":       final_state.get("total_tokens", 0),
+        "total_tokens":       accumulated_state.get("total_tokens", 0),
     })
 
     yield f"data: {json.dumps(complete_event)}\n\n"

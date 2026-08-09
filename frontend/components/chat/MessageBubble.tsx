@@ -3,6 +3,7 @@ import { Message } from "@/types";
 import { User, Bot } from "lucide-react";
 import { CitationCard } from "./CitationCard";
 import { LoadingSpinner } from "../shared/LoadingSpinner";
+import ReactMarkdown from "react-markdown";
 
 interface MessageBubbleProps {
   message: Message;
@@ -30,8 +31,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           {message.isStreaming && <LoadingSpinner size={14} />}
         </div>
 
-        <div className="prose prose-invert max-w-none text-sm leading-relaxed text-slate-200 whitespace-pre-wrap">
-          {message.content}
+        <div className="text-sm leading-relaxed text-slate-200 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:mb-2 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:mb-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>li]:mb-0.5 [&>strong]:font-semibold [&>strong]:text-slate-100 [&>*>strong]:font-semibold [&>*>strong]:text-slate-100">
+          <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
 
         {message.citations && message.citations.length > 0 && (

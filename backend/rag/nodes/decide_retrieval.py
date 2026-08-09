@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 from rag.graph.state import GraphState
-from rag.nodes.base import get_small_llm, now_iso, extract_usage
+from rag.nodes.base import get_small_llm, now_iso
 
 NODE_ID    = "decide_retrieval"
 NODE_LABEL = "Need Retrieval?"

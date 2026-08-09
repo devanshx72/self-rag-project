@@ -36,7 +36,7 @@ export const GraphNode: React.FC<NodeProps<GraphNodeData>> = memo(({ data, selec
 
   return (
     <div
-      className={`min-w-[180px] rounded-xl border p-3 text-slate-100 transition-all ${borderColor} ${
+      className={`w-[240px] rounded-xl border p-3 text-slate-100 transition-all ${borderColor} ${
         selected ? "ring-2 ring-[#00e599]" : ""
       }`}
     >
