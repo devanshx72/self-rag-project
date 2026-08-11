@@ -1,4 +1,4 @@
-"""Node: retrieve — semantic search against Qdrant."""
+"""Node: retrieve — semantic search against ChromaDB."""
 import time
 
 from rag.graph.state import GraphState
@@ -45,7 +45,7 @@ def retrieve(state: GraphState) -> dict:
                 for c in chunks
             ]
         },
-        "decision":             f"Retrieved {len(chunks)} chunks from Qdrant",
+        "decision":             f"Retrieved {len(chunks)} chunks from ChromaDB",
         "retrieved_chunks":     len(chunks),
         "relevant_chunks":      0,
         "discarded_chunks":     0,

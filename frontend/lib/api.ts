@@ -13,18 +13,7 @@ export async function uploadDocument(file: File): Promise<{
 }> {
   const form = new FormData();
   form.append("file", file);
-
-  const headers: Record<string, string> = {};
-  const customKey = typeof window !== "undefined" ? localStorage.getItem("mistral_api_key") : null;
-  if (customKey) {
-    headers["X-Mistral-API-Key"] = customKey;
-  }
-
-  const res = await fetch(`${BASE_URL}/upload`, { 
-    method: "POST", 
-    body: form,
-    headers,
-  });
+  const res = await fetch(`${BASE_URL}/upload`, { method: "POST", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Upload failed" }));
     throw new Error(err.detail || "Upload failed");
@@ -71,15 +60,9 @@ export async function* streamQuery(
   sessionId?: string,
   signal?: AbortSignal
 ): AsyncGenerator<Record<string, unknown>, void, unknown> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const customKey = typeof window !== "undefined" ? localStorage.getItem("mistral_api_key") : null;
-  if (customKey) {
-    headers["X-Mistral-API-Key"] = customKey;
-  }
-
   const res = await fetch(`${BASE_URL}/query`, {
     method: "POST",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ question, session_id: sessionId }),
     signal,
   });

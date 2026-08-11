@@ -1,4 +1,4 @@
-"""Document ingestion service: parse → chunk → embed → store in Qdrant."""
+"""Document ingestion service: parse → chunk → embed → store in ChromaDB."""
 import os
 import uuid
 import json
@@ -13,7 +13,8 @@ import markdown as md_lib
 
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from database.qdrant_client import get_qdrant_client, init_collection
+from database.chroma_client import get_or_create_collection
+from rag.embeddings.embedder import embed_texts
 
 UPLOADS_DIR = Path(__file__).parent.parent.parent / "uploads"
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -118,36 +119,30 @@ async def ingest_document(file_bytes: bytes, filename: str) -> dict:
     texts       = [c[0] for c in all_chunks]
     page_nums   = [c[1] for c in all_chunks]
 
-    # Store in Qdrant
-    client = get_qdrant_client()
-    init_collection("documents")
+    # Embed in batches of 50
+    embeddings: list[list[float]] = []
+    batch_size = 50
+    for i in range(0, len(texts), batch_size):
+        embeddings.extend(embed_texts(texts[i : i + batch_size]))
 
-    from qdrant_client.models import PointStruct, Document
+    # Store in ChromaDB
+    collection = get_or_create_collection()
+    chunk_ids  = [f"{doc_id}-{i}" for i in range(len(texts))]
+    metadatas  = [
+        {
+            "document_id": doc_id,
+            "filename":    filename,
+            "page_number": page_nums[i],
+            "chunk_index": i,
+        }
+        for i in range(len(texts))
+    ]
 
-    points = []
-    for i, text in enumerate(texts):
-        # Generate a valid UUID from doc_id and index deterministically
-        chunk_id = str(uuid.uuid5(uuid.UUID(doc_id), str(i)))
-        points.append(
-            PointStruct(
-                id=chunk_id,
-                vector=Document(
-                    text=text,
-                    model="sentence-transformers/all-MiniLM-L6-v2",
-                ),
-                payload={
-                    "document_id": doc_id,
-                    "filename":    filename,
-                    "page_number": page_nums[i],
-                    "chunk_index": i,
-                    "content":     text,
-                },
-            )
-        )
-
-    client.upsert(
-        collection_name="documents",
-        points=points,
+    collection.add(
+        ids=chunk_ids,
+        documents=texts,
+        embeddings=embeddings,
+        metadatas=metadatas,
     )
 
     # Persist document metadata
@@ -166,7 +161,7 @@ async def ingest_document(file_bytes: bytes, filename: str) -> dict:
 
 
 async def delete_document(doc_id: str) -> bool:
-    """Remove document chunks from Qdrant and metadata."""
+    """Remove document chunks from ChromaDB and metadata."""
     all_meta = _load_metadata()
     if doc_id not in all_meta:
         return False
@@ -174,21 +169,11 @@ async def delete_document(doc_id: str) -> bool:
     doc_info = all_meta[doc_id]
     chunk_count = doc_info.get("chunk_count", 0)
 
-    # Delete chunks from Qdrant
-    client = get_qdrant_client()
-    from qdrant_client.models import Filter, FieldCondition, MatchValue
+    # Delete chunks from ChromaDB
+    collection = get_or_create_collection()
+    chunk_ids = [f"{doc_id}-{i}" for i in range(chunk_count)]
     try:
-        client.delete(
-            collection_name="documents",
-            points_selector=Filter(
-                must=[
-                    FieldCondition(
-                        key="document_id",
-                        match=MatchValue(value=doc_id),
-                    )
-                ]
-            ),
-        )
+        collection.delete(ids=chunk_ids)
     except Exception:
         pass
 

@@ -1,6 +1,7 @@
-"""Qdrant retriever — semantic search with metadata + similarity scores."""
+"""ChromaDB retriever — semantic search with metadata + similarity scores."""
 from dataclasses import dataclass
-from database.qdrant_client import get_qdrant_client, init_collection
+from database.chroma_client import get_or_create_collection
+from rag.embeddings.embedder import embed_query
 
 
 @dataclass
@@ -14,37 +15,39 @@ class RetrievedChunk:
 
 
 def retrieve_chunks(question: str, top_k: int = 8) -> list[RetrievedChunk]:
-    """Query Qdrant Cloud for the top-k most similar chunks."""
-    client = get_qdrant_client()
-    init_collection("documents")
+    """Query ChromaDB for the top-k most similar chunks."""
+    collection = get_or_create_collection()
 
-    collection_info = client.get_collection(collection_name="documents")
-    if collection_info.points_count == 0:
+    if collection.count() == 0:
         return []
 
-    from qdrant_client.models import Document
+    query_embedding = embed_query(question)
 
-    results = client.query_points(
-        collection_name="documents",
-        query=Document(
-            text=question,
-            model="sentence-transformers/all-MiniLM-L6-v2",
-        ),
-        with_payload=True,
-        limit=top_k,
+    results = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=min(top_k, collection.count()),
+        include=["documents", "metadatas", "distances"],
     )
 
     chunks: list[RetrievedChunk] = []
-    for point in results.points:
-        meta = point.payload or {}
+    for i, (doc, meta, dist) in enumerate(
+        zip(
+            results["documents"][0],
+            results["metadatas"][0],
+            results["distances"][0],
+        )
+    ):
+        # ChromaDB cosine distance: 0 = identical, 2 = opposite
+        # Convert to similarity: 1 - dist/2  →  range [0, 1]
+        similarity = round(1.0 - dist / 2.0, 4)
         chunks.append(
             RetrievedChunk(
-                chunk_id=str(point.id),
-                content=meta.get("content", ""),
+                chunk_id=results["ids"][0][i],
+                content=doc,
                 document_name=meta.get("filename", "unknown"),
                 document_id=meta.get("document_id", ""),
                 page_number=meta.get("page_number", 0),
-                similarity_score=point.score,
+                similarity_score=similarity,
             )
         )
 
