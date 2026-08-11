@@ -13,7 +13,7 @@ langchain-text-splitters==0.3.4
 langgraph==0.2.59
 
 # Vector DB
-chromadb==0.5.23
+qdrant-client
 
 # Document parsing
 pymupdf==1.25.1

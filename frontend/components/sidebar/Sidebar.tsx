@@ -3,10 +3,11 @@
 import React, { useState } from "react";
 import { DocumentSidebar } from "./DocumentSidebar";
 import { HistoryPanel } from "./HistoryPanel";
-import { FileText, History as HistoryIcon } from "lucide-react";
+import { SettingsPanel } from "./SettingsPanel";
+import { FileText, History as HistoryIcon, Settings } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
-  const [activeSidebar, setActiveSidebar] = useState<"documents" | "history">("documents");
+  const [activeSidebar, setActiveSidebar] = useState<"documents" | "history" | "settings">("documents");
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   return (
@@ -61,6 +62,21 @@ export const Sidebar: React.FC = () => {
             >
               <HistoryIcon className="h-5 w-5" />
             </button>
+
+            <button
+              onClick={() => {
+                setActiveSidebar("settings");
+                setIsSidebarExpanded(true);
+              }}
+              className={`rounded-xl p-2.5 transition-all cursor-pointer ${
+                activeSidebar === "settings" && isSidebarExpanded
+                  ? "cool-nav-active text-[#0b0d0f] font-semibold"
+                  : "text-slate-400 hover:bg-[#15191d] hover:text-slate-200"
+              }`}
+              title={isSidebarExpanded ? "Settings Panel" : "Open Settings"}
+            >
+              <Settings className="h-5 w-5" />
+            </button>
           </div>
         </div>
 
@@ -77,7 +93,13 @@ export const Sidebar: React.FC = () => {
         }`}
       >
         <div className="w-80 h-full">
-          {activeSidebar === "documents" ? <DocumentSidebar /> : <HistoryPanel />}
+          {activeSidebar === "documents" ? (
+            <DocumentSidebar />
+          ) : activeSidebar === "history" ? (
+            <HistoryPanel />
+          ) : (
+            <SettingsPanel />
+          )}
         </div>
       </div>
     </div>
