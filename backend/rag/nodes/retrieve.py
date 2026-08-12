@@ -1,4 +1,5 @@
 """Node: retrieve — semantic search against ChromaDB."""
+import asyncio
 import time
 
 from rag.graph.state import GraphState
@@ -9,11 +10,13 @@ NODE_ID    = "retrieve"
 NODE_LABEL = "Retrieve Documents"
 
 
-def retrieve(state: GraphState) -> dict:
+async def retrieve(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
-    chunks = retrieve_chunks(state["question"], top_k=8)
+    # retrieve_chunks calls ChromaDB synchronously — offload to a thread
+    # so we don't block the asyncio event loop (and thus the SSE stream).
+    chunks = await asyncio.to_thread(retrieve_chunks, state["question"], 8)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     avg_score = (

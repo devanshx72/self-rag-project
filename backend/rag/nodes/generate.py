@@ -50,7 +50,7 @@ def _build_citations(chunks: list[RetrievedChunk]) -> list[dict]:
     ]
 
 
-def generate_from_context(state: GraphState) -> dict:
+async def generate_from_context(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -67,7 +67,7 @@ def generate_from_context(state: GraphState) -> dict:
     messages = prompt.format_messages(question=state["question"], context=context)
     prompt_str = "\n".join(m.content for m in messages)
 
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     prompt_tokens, completion_tokens, total_tokens = extract_usage(response)

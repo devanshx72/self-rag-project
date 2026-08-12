@@ -2,22 +2,27 @@
 import os
 from dotenv import load_dotenv
 from langchain_mistralai import MistralAIEmbeddings
+from rag.nodes.base import mistral_api_key_var
 
-_embeddings: MistralAIEmbeddings | None = None
+_embeddings_cache: dict[str, MistralAIEmbeddings] = {}
 
 
 def get_embedder() -> MistralAIEmbeddings:
-    global _embeddings
-    if _embeddings is None:
-        load_dotenv()
-        api_key = os.environ.get("MISTRAL_API_KEY")
-        if not api_key:
-            raise ValueError("MISTRAL_API_KEY environment variable is not set. Please check your .env file.")
-        _embeddings = MistralAIEmbeddings(
+    load_dotenv()
+    custom_key = mistral_api_key_var.get()
+    api_key = custom_key or os.environ.get("MISTRAL_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "Mistral API key is not configured. Please add a key in the settings "
+            "or set the MISTRAL_API_KEY environment variable on the server."
+        )
+
+    if api_key not in _embeddings_cache:
+        _embeddings_cache[api_key] = MistralAIEmbeddings(
             model="mistral-embed",
             api_key=api_key,
         )
-    return _embeddings
+    return _embeddings_cache[api_key]
 
 
 def embed_texts(texts: list[str]) -> list[list[float]]:

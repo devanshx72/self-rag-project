@@ -31,7 +31,7 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 
-def revise_answer(state: GraphState) -> dict:
+async def revise_answer(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -43,7 +43,7 @@ def revise_answer(state: GraphState) -> dict:
     )
     prompt_str = "\n".join(m.content for m in messages)
 
-    response = llm.invoke(messages)
+    response = await llm.ainvoke(messages)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     prompt_tokens, completion_tokens, total_tokens = extract_usage(response)

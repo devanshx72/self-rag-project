@@ -42,7 +42,7 @@ class IsSUPDecision(BaseModel):
     evidence: List[str] = Field(default_factory=list)
 
 
-def verify_groundedness(state: GraphState) -> dict:
+async def verify_groundedness(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -56,7 +56,7 @@ def verify_groundedness(state: GraphState) -> dict:
     )
     prompt_str = "\n".join(m.content for m in messages)
 
-    decision: IsSUPDecision = structured_llm.invoke(messages)
+    decision: IsSUPDecision = await structured_llm.ainvoke(messages)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     p_tok = 120

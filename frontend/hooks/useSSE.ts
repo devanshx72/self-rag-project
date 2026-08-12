@@ -38,7 +38,10 @@ export function useSSE() {
 
       try {
         for await (const event of streamQuery(question)) {
-          if (event.event === "node_complete") {
+          if (event.event === "node_start") {
+            // Immediately mark node as running for live graph animation
+            updateNodeStatus(event.node_id as string, "running");
+          } else if (event.event === "node_complete") {
             const trace = event as unknown as NodeTrace;
             updateNodeStatus(trace.node_id, "completed", trace);
             addTrace(trace);

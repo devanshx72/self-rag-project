@@ -31,7 +31,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message }) => {
           {message.isStreaming && <LoadingSpinner size={14} />}
         </div>
 
-        <div className="text-sm leading-relaxed text-slate-200 [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:mb-2 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:mb-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>li]:mb-0.5 [&>strong]:font-semibold [&>strong]:text-slate-100 [&>*>strong]:font-semibold [&>*>strong]:text-slate-100">
+        <div className="text-sm leading-relaxed text-slate-200 break-words [&>p]:mb-2 [&>p:last-child]:mb-0 [&>ul]:mb-2 [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:mb-2 [&>ol]:list-decimal [&>ol]:pl-5 [&>li]:mb-0.5 [&>strong]:font-semibold [&>strong]:text-slate-100 [&>*>strong]:font-semibold [&>*>strong]:text-slate-100">
           <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
 

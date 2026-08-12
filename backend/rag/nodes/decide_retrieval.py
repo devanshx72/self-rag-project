@@ -31,7 +31,7 @@ class RetrieveDecision(BaseModel):
     )
 
 
-def decide_retrieval(state: GraphState) -> dict:
+async def decide_retrieval(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -41,7 +41,7 @@ def decide_retrieval(state: GraphState) -> dict:
     messages = prompt.format_messages(question=state["question"])
     prompt_str = "\n".join(m.content for m in messages)
 
-    decision: RetrieveDecision = structured_llm.invoke(messages)
+    decision: RetrieveDecision = await structured_llm.ainvoke(messages)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     # Structured output doesn't return usage_metadata easily; approximate

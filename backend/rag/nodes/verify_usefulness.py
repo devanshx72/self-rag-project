@@ -32,7 +32,7 @@ class IsUSEDecision(BaseModel):
     reason: str = Field(..., description="Short reason in 1 line.")
 
 
-def verify_usefulness(state: GraphState) -> dict:
+async def verify_usefulness(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -45,7 +45,7 @@ def verify_usefulness(state: GraphState) -> dict:
     )
     prompt_str = "\n".join(m.content for m in messages)
 
-    decision: IsUSEDecision = structured_llm.invoke(messages)
+    decision: IsUSEDecision = await structured_llm.ainvoke(messages)
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
     p_tok = 80

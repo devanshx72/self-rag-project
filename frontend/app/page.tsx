@@ -62,7 +62,7 @@ export default function Home() {
       {/* Main Content Area (Split Chat & Visualization) */}
       <div className="flex flex-1 min-w-0 overflow-hidden">
         {/* Left Pane: Chat Interaction */}
-        <div className="w-1/2 min-w-[400px] border-r border-[#1a1f26] flex flex-col">
+        <div className="w-1/2 min-w-[320px] md:min-w-[400px] border-r border-[#1a1f26] flex flex-col">
           <ChatPanel />
         </div>
 

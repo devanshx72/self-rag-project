@@ -6,7 +6,7 @@ NODE_ID    = "no_answer"
 NODE_LABEL = "No Answer Found"
 
 
-def no_answer(state: GraphState) -> dict:
+async def no_answer(state: GraphState) -> dict:
     ts = now_iso()
     message = (
         "I couldn't find relevant information in the uploaded documents to answer your question. "

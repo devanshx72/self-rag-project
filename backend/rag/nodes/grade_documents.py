@@ -36,7 +36,7 @@ class RelevanceDecision(BaseModel):
     reason: str = Field(..., description="One-line reason.")
 
 
-def grade_documents(state: GraphState) -> dict:
+async def grade_documents(state: GraphState) -> dict:
     t0 = time.perf_counter()
     ts = now_iso()
 
@@ -56,7 +56,7 @@ def grade_documents(state: GraphState) -> dict:
             question=state["question"],
             document=chunk.content,
         )
-        decision: RelevanceDecision = structured_llm.invoke(messages)
+        decision: RelevanceDecision = await structured_llm.ainvoke(messages)
         # Approximate token usage per call
         p_tok = len(chunk.content.split()) + 80
         c_tok = 15
