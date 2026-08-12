@@ -19,6 +19,54 @@ An interactive, full-stack platform that implements **Self-Reflective Retrieval-
 
 ## Architecture
 
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Client["Browser Client"]
+        UI["Next.js 16 + React 19"]
+        RF["React Flow — Live Graph"]
+        ZS["Zustand State"]
+        FM["Framer Motion"]
+    end
+
+    subgraph Server["FastAPI Backend"]
+        API["REST + SSE Endpoints"]
+        LG["LangGraph Agent"]
+        DS["Document Service"]
+        HS["History Service"]
+    end
+
+    subgraph Intelligence["AI Layer"]
+        MS["mistral-small-latest\n(routing & grading)"]
+        MM["mistral-medium-latest\n(generation & reflection)"]
+        ME["mistral-embed\n(dense embeddings)"]
+    end
+
+    subgraph Storage["Storage"]
+        CDB["ChromaDB\n(vector store)"]
+        JSON["JSON Logs\n(session history)"]
+        FS["File Uploads"]
+    end
+
+    UI -- "HTTP / SSE" --> API
+    API --> LG
+    API --> DS
+    API --> HS
+    LG --> MS
+    LG --> MM
+    DS --> ME
+    ME --> CDB
+    LG --> CDB
+    HS --> JSON
+    DS --> FS
+
+    style Client fill:#1e1b4b,stroke:#6366f1,color:#e0e7ff
+    style Server fill:#1a2e1a,stroke:#22c55e,color:#dcfce7
+    style Intelligence fill:#2d1a1a,stroke:#f97316,color:#ffedd5
+    style Storage fill:#1a1a2e,stroke:#a855f7,color:#f3e8ff
+```
+
 ### Tech Stack
 
 | Layer | Technology |
@@ -28,7 +76,6 @@ An interactive, full-stack platform that implements **Self-Reflective Retrieval-
 | **LLM** | Mistral AI (`mistral-small-latest` + `mistral-medium-latest`) |
 | **Embeddings** | Mistral AI (`mistral-embed`) |
 | **Vector DB** | ChromaDB (persistent, local) |
-| **Font** | Manrope (Google Fonts via `next/font`) |
 
 ### LLM Role Split
 
@@ -43,54 +90,56 @@ An interactive, full-stack platform that implements **Self-Reflective Retrieval-
 
 The pipeline is built as a stateful LangGraph graph. Every node emits a trace event streamed to the frontend via SSE.
 
-```
-User Question
-     │
-     ▼
-┌─────────────────┐
-│ decide_retrieval │  ← Does this question need documents?
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    │         │
-   No        Yes
-    │         │
-    ▼         ▼
-generate   retrieve
- _direct   _chunks
-    │         │
-    ▼         ▼
-   END    grade_documents  ← Is each chunk actually relevant?
-               │
-         ┌─────┴─────┐
-         │           │
-    No relevant   Relevant
-       docs       docs found
-         │           │
-         ▼           ▼
-      no_answer  generate_from_context  ← Answer using only relevant chunks
-                      │
-                      ▼
-             verify_groundedness  ← Is the answer grounded in the context?
-                      │
-               ┌──────┴──────┐
-               │             │
-         fully_supported  partially /
-               │          no_support
-               │             │
-               │         revise_answer  ← Rewrite as direct quotes only
-               │             │
-               │             └──── loops back (max 3 retries)
-               │
-               ▼
-        verify_usefulness  ← Does the answer actually answer the question?
-               │
-          ┌────┴────┐
-          │         │
-        Useful   Not Useful
-          │         │
-          ▼         ▼
-         END    no_answer
+```mermaid
+flowchart TD
+    START(["User Question"]) --> DR
+
+    subgraph Routing["Routing"]
+        DR["decide_retrieval\nDoes this need documents?"]
+    end
+
+    DR -- "No retrieval needed" --> GD
+    DR -- "Retrieval needed" --> RET
+
+    subgraph DirectPath["Direct Path"]
+        GD["generate_direct\nAnswer from LLM knowledge"]
+    end
+
+    subgraph RetrievalPath["Retrieval Path"]
+        RET["retrieve_chunks\nQuery ChromaDB — top-8 chunks"]
+        GRD["grade_documents\nFilter to relevant chunks only"]
+        GFC["generate_from_context\n Answer with inline citations"]
+    end
+
+    subgraph SelfReflection["Self-Reflection Loop"]
+        VG["verify_groundedness\n IS-SUP: Is answer in the context?"]
+        RA["revise_answer\nRewrite as direct quotes"]
+        VU["verify_usefulness\n IS-USE: Does it answer the question?"]
+    end
+
+    subgraph Terminals["🏁 Terminals"]
+        END_OK([" END — Answer Returned"])
+        NA(["no_answer — Fallback"])
+    end
+
+    RET --> GRD
+    GRD -- "No relevant docs" --> NA
+    GRD -- "Relevant docs found" --> GFC
+    GFC --> VG
+
+    VG -- "Fully supported" --> VU
+    VG -- "Partial / not supported" --> RA
+    RA -- "Retry ≤ 3×" --> VG
+
+    VU -- "Useful" --> END_OK
+    VU -- "Not useful" --> NA
+    GD --> END_OK
+
+    style Routing fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+    style DirectPath fill:#1a3320,stroke:#22c55e,color:#bbf7d0
+    style RetrievalPath fill:#2d1f4a,stroke:#a855f7,color:#e9d5ff
+    style SelfReflection fill:#3d1f10,stroke:#f97316,color:#fed7aa
+    style Terminals fill:#1f1f1f,stroke:#6b7280,color:#d1d5db
 ```
 
 ### Nodes Reference
@@ -106,82 +155,6 @@ generate   retrieve
 | Revise Answer | `revise_answer` | medium | Rewrites the answer as strict direct quotes from the context |
 | Useful? | `verify_usefulness` | medium | Checks if the answer actually responds to the user's question (IS-USE check) |
 | No Answer Found | `no_answer` | — | Fallback when no relevant docs or answer fails all checks |
-
----
-
-## Project Structure
-
-```
-self-rag-project/
-├── backend/
-│   ├── main.py                     # FastAPI app entrypoint
-│   ├── api/
-│   │   └── routes.py               # REST + SSE streaming endpoints
-│   ├── rag/
-│   │   ├── graph/
-│   │   │   ├── builder.py          # LangGraph graph construction
-│   │   │   └── state.py            # GraphState TypedDict definition
-│   │   ├── nodes/
-│   │   │   ├── base.py             # Shared LLM instances (Mistral)
-│   │   │   ├── decide_retrieval.py
-│   │   │   ├── retrieve.py
-│   │   │   ├── grade_documents.py
-│   │   │   ├── generate.py
-│   │   │   ├── generate_direct.py
-│   │   │   ├── verify_groundedness.py
-│   │   │   ├── revise_answer.py
-│   │   │   ├── verify_usefulness.py
-│   │   │   └── no_answer.py
-│   │   ├── embeddings/
-│   │   │   └── embedder.py         # Mistral embed wrapper
-│   │   └── retriever/
-│   │       └── retriever.py        # ChromaDB cosine similarity search
-│   ├── database/
-│   │   └── chroma_client.py        # ChromaDB persistent client singleton
-│   └── services/
-│       ├── document_service.py     # Document ingestion (parse → chunk → embed → store)
-│       └── history_service.py      # Session history persistence (JSON)
-│
-├── frontend/
-│   ├── app/
-│   │   ├── layout.tsx              # Root layout with Manrope font
-│   │   ├── page.tsx                # Main application page
-│   │   └── globals.css             # Tailwind theme + global styles
-│   ├── components/
-│   │   ├── chat/
-│   │   │   ├── ChatPanel.tsx       # Full chat interface with input bar
-│   │   │   ├── MessageBubble.tsx   # Markdown-rendered message with citations
-│   │   │   └── CitationCard.tsx    # Source document citation block
-│   │   ├── graph/
-│   │   │   ├── ExecutionGraph.tsx  # React Flow graph with live node states
-│   │   │   └── GraphNode.tsx       # Custom node component
-│   │   ├── timeline/
-│   │   │   └── ExecutionTimeline.tsx  # Ordered step-by-step trace log
-│   │   ├── dashboard/
-│   │   │   └── StatsDashboard.tsx  # Session analytics
-│   │   ├── sidebar/
-│   │   │   └── Sidebar.tsx         # Navigation sidebar
-│   │   └── shared/
-│   │       ├── NodeDetailModal.tsx # Global modal for node inspection
-│   │       ├── StatusBadge.tsx
-│   │       ├── LoadingSpinner.tsx
-│   │       └── Loader.tsx
-│   ├── hooks/
-│   │   └── useSSE.ts               # SSE streaming consumer hook
-│   ├── store/
-│   │   ├── useExecutionStore.ts    # Graph + trace state (Zustand)
-│   │   ├── useChatStore.ts         # Chat messages state (Zustand)
-│   │   └── useDocumentStore.ts     # Uploaded documents state (Zustand)
-│   ├── lib/
-│   │   ├── api.ts                  # API client + SSE stream reader
-│   │   └── graphLayout.ts          # Static React Flow node/edge layout
-│   └── types/
-│       └── index.ts                # Shared TypeScript types
-│
-├── chromadb/                       # Persistent vector store (auto-created)
-├── logs/                           # Session history JSON (auto-created)
-└── .env.example
-```
 
 ---
 
@@ -266,11 +239,24 @@ Open **http://localhost:3000**.
 
 Supported formats: **PDF**, **DOCX**, **TXT**, **Markdown**
 
-Ingestion pipeline:
-1. **Parse** — extracts text per page (PyMuPDF for PDFs, python-docx for Word)
-2. **Chunk** — splits text with `RecursiveCharacterTextSplitter` (600 chars, 150 overlap)
-3. **Embed** — generates dense vectors via `mistral-embed`
-4. **Store** — upserts chunks into ChromaDB with cosine distance space
+```mermaid
+flowchart LR
+    UP(["File Upload\nmax 50 MB"])
+    PA["Parse\nPyMuPDF / python-docx\ntext per page"]
+    CH["Chunk\nRecursiveCharacterTextSplitter\n600 chars · 150 overlap"]
+    EM["Embed\nmistral-embed\ndense vectors"]
+    ST["Store\nChromaDB upsert\ncosine distance space"]
+    RET(["Retrieval\ntop-8 chunks\nscore = 1 − dist/2"])
+
+    UP --> PA --> CH --> EM --> ST --> RET
+
+    style UP fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+    style PA fill:#1a3320,stroke:#22c55e,color:#bbf7d0
+    style CH fill:#1a3320,stroke:#22c55e,color:#bbf7d0
+    style EM fill:#3d1f10,stroke:#f97316,color:#fed7aa
+    style ST fill:#2d1f4a,stroke:#a855f7,color:#e9d5ff
+    style RET fill:#1e3a5f,stroke:#3b82f6,color:#bfdbfe
+```
 
 Retrieval uses cosine similarity, returning top-8 chunks. Similarity is normalized from ChromaDB's cosine distance: `score = 1 − (distance / 2)`, giving a `[0, 1]` range.
 
