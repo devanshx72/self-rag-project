@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 from rag.graph.state import GraphState
-from rag.nodes.base import get_small_llm, now_iso
+from rag.nodes.base import get_small_llm, now_iso, extract_usage
 
 NODE_ID    = "decide_retrieval"
 NODE_LABEL = "Need Retrieval?"
@@ -36,18 +36,17 @@ async def decide_retrieval(state: GraphState) -> dict:
     ts = now_iso()
 
     llm = get_small_llm()
-    structured_llm = llm.with_structured_output(RetrieveDecision)
+    structured_llm = llm.with_structured_output(RetrieveDecision, include_raw=True)
 
     messages = prompt.format_messages(question=state["question"])
     prompt_str = "\n".join(m.content for m in messages)
 
-    decision: RetrieveDecision = await structured_llm.ainvoke(messages)
+    result = await structured_llm.ainvoke(messages)
+    decision: RetrieveDecision = result["parsed"]
+    raw_message = result["raw"]
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
-    # Structured output doesn't return usage_metadata easily; approximate
-    prompt_tokens     = 80
-    completion_tokens = 10
-    total_tokens      = prompt_tokens + completion_tokens
+    prompt_tokens, completion_tokens, total_tokens = extract_usage(raw_message)
 
     trace_entry = {
         "node_id":              NODE_ID,

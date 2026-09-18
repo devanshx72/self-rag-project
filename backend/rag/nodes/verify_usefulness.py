@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 from langchain_core.prompts import ChatPromptTemplate
 
 from rag.graph.state import GraphState
-from rag.nodes.base import get_answering_llm, now_iso
+from rag.nodes.base import get_answering_llm, now_iso, extract_usage
 
 NODE_ID    = "verify_usefulness"
 NODE_LABEL = "Useful?"
@@ -37,7 +37,7 @@ async def verify_usefulness(state: GraphState) -> dict:
     ts = now_iso()
 
     llm = get_answering_llm()
-    structured_llm = llm.with_structured_output(IsUSEDecision)
+    structured_llm = llm.with_structured_output(IsUSEDecision, include_raw=True)
 
     messages = prompt.format_messages(
         question=state["question"],
@@ -45,12 +45,12 @@ async def verify_usefulness(state: GraphState) -> dict:
     )
     prompt_str = "\n".join(m.content for m in messages)
 
-    decision: IsUSEDecision = await structured_llm.ainvoke(messages)
+    result = await structured_llm.ainvoke(messages)
+    decision: IsUSEDecision = result["parsed"]
+    raw_message = result["raw"]
     latency_ms = round((time.perf_counter() - t0) * 1000, 2)
 
-    p_tok = 80
-    c_tok = 20
-    total_tokens = p_tok + c_tok
+    prompt_tokens, completion_tokens, total_tokens = extract_usage(raw_message)
 
     trace_entry = {
         "node_id":              NODE_ID,
@@ -58,8 +58,8 @@ async def verify_usefulness(state: GraphState) -> dict:
         "status":               "completed",
         "timestamp":            ts,
         "latency_ms":           latency_ms,
-        "prompt_tokens":        p_tok,
-        "completion_tokens":    c_tok,
+        "prompt_tokens":        prompt_tokens,
+        "completion_tokens":    completion_tokens,
         "total_tokens":         total_tokens,
         "prompt_used":          prompt_str,
         "raw_llm_output":       str(decision.model_dump()),

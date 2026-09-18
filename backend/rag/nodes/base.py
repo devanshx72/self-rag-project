@@ -54,8 +54,18 @@ def now_iso() -> str:
 
 def extract_usage(ai_message: Any) -> tuple[int, int, int]:
     """Extract (prompt_tokens, completion_tokens, total) from AIMessage."""
+    if not ai_message:
+        return 0, 0, 0
     meta = getattr(ai_message, "usage_metadata", None) or {}
-    prompt_tokens      = meta.get("input_tokens", 0)
-    completion_tokens  = meta.get("output_tokens", 0)
-    total              = meta.get("total_tokens", prompt_tokens + completion_tokens)
+    prompt_tokens     = meta.get("input_tokens", 0)
+    completion_tokens = meta.get("output_tokens", 0)
+    total             = meta.get("total_tokens", prompt_tokens + completion_tokens)
+
+    if prompt_tokens == 0 and completion_tokens == 0:
+        resp_meta = getattr(ai_message, "response_metadata", {}) or {}
+        token_usage = resp_meta.get("token_usage", {}) or resp_meta.get("usage", {})
+        prompt_tokens     = token_usage.get("prompt_tokens", 0) or token_usage.get("input_tokens", 0)
+        completion_tokens = token_usage.get("completion_tokens", 0) or token_usage.get("output_tokens", 0)
+        total             = token_usage.get("total_tokens", prompt_tokens + completion_tokens)
+
     return prompt_tokens, completion_tokens, total

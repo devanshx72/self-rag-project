@@ -5,7 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from rag.graph.state import GraphState
 from rag.retriever.retriever import RetrievedChunk
-from rag.nodes.base import get_small_llm, now_iso
+from rag.nodes.base import get_small_llm, now_iso, extract_usage
 
 NODE_ID    = "grade_documents"
 NODE_LABEL = "Grade Documents"
@@ -41,7 +41,7 @@ async def grade_documents(state: GraphState) -> dict:
     ts = now_iso()
 
     llm = get_small_llm()
-    structured_llm = llm.with_structured_output(RelevanceDecision)
+    structured_llm = llm.with_structured_output(RelevanceDecision, include_raw=True)
 
     chunks: list[RetrievedChunk] = state.get("retrieved_chunks", [])
     relevant: list[RetrievedChunk] = []
@@ -56,10 +56,11 @@ async def grade_documents(state: GraphState) -> dict:
             question=state["question"],
             document=chunk.content,
         )
-        decision: RelevanceDecision = await structured_llm.ainvoke(messages)
-        # Approximate token usage per call
-        p_tok = len(chunk.content.split()) + 80
-        c_tok = 15
+        result = await structured_llm.ainvoke(messages)
+        decision: RelevanceDecision = result["parsed"]
+        raw_message = result["raw"]
+
+        p_tok, c_tok, _ = extract_usage(raw_message)
         total_prompt_tokens     += p_tok
         total_completion_tokens += c_tok
 
